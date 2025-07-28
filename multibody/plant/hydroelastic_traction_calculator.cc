@@ -218,7 +218,7 @@ HydroelasticTractionCalculator<T>::CalcTractionAtQHelper(
   Eigen::Vector3<T> v_WAq_ss = Eigen::Vector3<T>::Zero();
   Eigen::Vector3<T> v_WBq_ss = Eigen::Vector3<T>::Zero();
   if (sfn_A.has_value()) {
-    v_WAq_ss = sfn_A.value().get().cross(nhat_W);
+    v_WAq_ss = sfn_A.value().get().cross(-nhat_W);
   }
   if (sfn_B.has_value()) {
     v_WBq_ss = sfn_B.value().get().cross(nhat_W);
