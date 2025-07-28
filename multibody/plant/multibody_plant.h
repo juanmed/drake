@@ -5689,6 +5689,11 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
       const geometry::SceneGraphInspector<T>& inspector,
       const math::RigidTransform<T>& X_W, const Vector3<T>& p_WC) const;
 
+  const std::optional<Eigen::Vector3<T>> GetSurfaceSpeedAndNormal(
+      const geometry::GeometryId id,
+      const geometry::SceneGraphInspector<T>& inspector,
+      const math::RigidTransform<T>& X_W) const;
+
   /// @} <!-- Introspection -->
 
 #ifndef DRAKE_DOXYGEN_CXX
@@ -5867,11 +5872,6 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
   const std::optional<Vector3<T>> GetSurfaceVelocityNormal(
       geometry::GeometryId id,
       const geometry::SceneGraphInspector<T>& inspector) const;
-
-  const std::optional<Eigen::Vector3<T>> GetSurfaceSpeedAndNormal(
-      const geometry::GeometryId id,
-      const geometry::SceneGraphInspector<T>& inspector,
-      const math::RigidTransform<T>& X_W) const;
 
   // Helper method to apply default collision filters. By default, we don't
   // consider collisions:

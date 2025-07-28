@@ -23,7 +23,7 @@ def load_conveyor_gripper_scene():
 
     # Add MultibodyPlant and SceneGraph to the builder.
     plant_config = MultibodyPlantConfig(
-        time_step=0.0,
+        time_step=0.005,
         contact_model="hydroelastic",
         contact_surface_representation="polygon",
     )
