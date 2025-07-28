@@ -1,0 +1,25 @@
+load("//tools/skylark:drake_py.bzl", "drake_py_binary")
+
+package(default_visibility = ["//visibility:private"])
+
+filegroup(
+    name = "models",
+    srcs = [
+        "conveyor_gripper_scene.sdf",
+    ],
+    visibility = ["//:__pkg__"],
+)
+
+drake_py_binary(
+    name = "conveyor_gripper",
+    srcs = ["conveyor_gripper.py"],
+    add_test_rule = 1,
+    data = [":models"],
+    test_rule_args = [
+        "--target_realtime_rate=0",
+        "--simulation_time=0.1",
+    ],
+    deps = [
+        "//bindings/pydrake",
+    ],
+)
