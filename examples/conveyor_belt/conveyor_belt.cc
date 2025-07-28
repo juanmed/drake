@@ -6,6 +6,8 @@
 #include "drake/multibody/meshcat/contact_visualizer.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/multibody_plant.h"
+#include "drake/multibody/plant/multibody_plant_config.h"
+#include "drake/multibody/plant/multibody_plant_config_functions.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
 
@@ -14,12 +16,36 @@ namespace examples {
 namespace conveyor_belt {
 namespace {
 
-DEFINE_double(max_time_step, 1e-3, "Simulation time step used for integrator.");
+DEFINE_double(time_step, 0.0, "Simulation time step used for integrator.");
+DEFINE_string(contact_model, "hydroelastic",
+              "Contact model. Options are: 'point', 'hydroelastic', "
+              "'hydroelastic_with_fallback'.");
+DEFINE_string(contact_surface_representation, "polygon",
+              "Contact-surface representation for hydroelastics. "
+              "Options are: 'triangle' or 'polygon'. Default is 'polygon'.");
+DEFINE_double(hydroelastic_modulus, 3.0e4,
+              "Hydroelastic modulus of the ball, [Pa].");
+DEFINE_double(resolution_hint_factor, 0.3,
+              "This scaling factor, [unitless], multiplied by the radius of "
+              "the ball gives the target edge length of the mesh of the ball "
+              "on the surface of its hydroelastic representation. The smaller "
+              "number gives a finer mesh with more tetrahedral elements.");
+DEFINE_double(dissipation, 3.0,
+              "Hunt & Crossley dissipation, [s/m], for the ball");
+DEFINE_double(friction_coefficient, 0.3,
+              "coefficient for both static and dynamic friction, [unitless], "
+              "of the ball.");
 
 int do_main_continous_plant() {
+  multibody::MultibodyPlantConfig config;
+  // We allow only discrete systems.
+  config.time_step = FLAGS_time_step;
+  config.penetration_allowance = 0.001;
+  config.contact_model = FLAGS_contact_model;
+  config.contact_surface_representation = FLAGS_contact_surface_representation;
+
   systems::DiagramBuilder<double> builder;
-  auto [plant, scene_graph] =
-      multibody::AddMultibodyPlantSceneGraph(&builder, FLAGS_max_time_step);
+  auto [plant, scene_graph] = multibody::AddMultibodyPlant(config, &builder);
   std::string conveyor_belt_url =
       "package://drake/examples/conveyor_belt/conveyor_belt.sdf";
   multibody::Parser(&builder).AddModelsFromUrl(conveyor_belt_url);

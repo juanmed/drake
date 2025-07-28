@@ -1777,6 +1777,26 @@ Vector3<T> MultibodyPlant<T>::GetSurfaceVelocity(
 }
 
 template <typename T>
+const std::optional<Eigen::Vector3<T>>
+MultibodyPlant<T>::GetSurfaceSpeedAndNormal(
+    const geometry::GeometryId id,
+    const geometry::SceneGraphInspector<T>& inspector,
+    const RigidTransform<T>& X_W) const {
+  std::optional<double> surface_speed = GetSurfaceSpeed(id, inspector);
+  if (!surface_speed.has_value()) {
+    return std::nullopt;
+  }
+  std::optional<Eigen::Vector3<T>> velocity_normal =
+      GetSurfaceVelocityNormal(id, inspector);
+  if (!velocity_normal.has_value()) {
+    return std::nullopt;
+  }
+  Eigen::Vector3<T> speed_and_normal_W =
+      X_W.rotation() * (surface_speed.value() * velocity_normal.value());
+  return speed_and_normal_W;
+}
+
+template <typename T>
 void MultibodyPlant<T>::ApplyDefaultCollisionFilters() {
   DRAKE_DEMAND(geometry_source_is_registered());
   if (adjacent_bodies_collision_filters_) {
@@ -2644,10 +2664,19 @@ void MultibodyPlant<T>::CalcHydroelasticContactForcesContinuous(
     const double dissipation = hydroelastics_engine.CalcCombinedDissipation(
         geometryM_id, geometryN_id, inspector);
 
+    // Read surface speed and normal defined for each geometry in collision.
+    // These are expressed in world frame coordinates. The surface speed is a
+    // scalar encoded in the magnitude of the returned vector, and the normal
+    // vector is recovered by normalizing its.
+    const std::optional<Eigen::Vector3<T>> v_ACo_W_ss =
+        GetSurfaceSpeedAndNormal(geometryM_id, inspector, X_WA);
+    const std::optional<Eigen::Vector3<T>> v_BCo_W_ss =
+        GetSurfaceSpeedAndNormal(geometryN_id, inspector, X_WB);
+
     // Integrate the hydroelastic traction field over the contact surface.
     SpatialForce<T> F_Ac_W;
     traction_calculator.ComputeSpatialForcesAtCentroidFromHydroelasticModel(
-        data, dissipation, dynamic_friction, &F_Ac_W);
+        data, dissipation, dynamic_friction, &F_Ac_W, v_ACo_W_ss, v_BCo_W_ss);
 
     // Shift the traction at the centroid to tractions at the body origins.
     SpatialForce<T> F_Ao_W, F_Bo_W;

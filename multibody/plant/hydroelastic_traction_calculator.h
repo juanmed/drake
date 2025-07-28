@@ -105,7 +105,11 @@ class HydroelasticTractionCalculator {
    */
   void ComputeSpatialForcesAtCentroidFromHydroelasticModel(
       const Data& data, double dissipation, double mu_coulomb,
-      multibody::SpatialForce<T>* F_Ac_W) const;
+      multibody::SpatialForce<T>* F_Ac_W,
+      std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_A =
+          std::nullopt,
+      std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_B =
+          std::nullopt) const;
 
   /*
    Shifts the spatial force applied at the centroid of the contact surface
@@ -142,15 +146,26 @@ class HydroelasticTractionCalculator {
       const Data& data, int face_index,
       const typename geometry::TriangleSurfaceMesh<T>::template Barycentric<T>&
           Q_barycentric,
-      double dissipation, double mu_coulomb) const;
+      double dissipation, double mu_coulomb,
+      std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_A =
+          std::nullopt,
+      std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_B =
+          std::nullopt) const;
 
   HydroelasticQuadraturePointData<T> CalcTractionAtCentroid(
-      const Data& data, int face_index, double dissipation,
-      double mu_coulomb) const;
+      const Data& data, int face_index, double dissipation, double mu_coulomb,
+      std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_A =
+          std::nullopt,
+      std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_B =
+          std::nullopt) const;
 
   HydroelasticQuadraturePointData<T> CalcTractionAtQHelper(
       const Data& data, int face_index, const T& e, const Vector3<T>& nhat_W,
-      double dissipation, double mu_coulomb, const Vector3<T>& p_WQ) const;
+      double dissipation, double mu_coulomb, const Vector3<T>& p_WQ,
+      std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_A =
+          std::nullopt,
+      std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_B =
+          std::nullopt) const;
 
   multibody::SpatialForce<T> ComputeSpatialTractionAtAcFromTractionAtAq(
       const Data& data, const Vector3<T>& p_WQ,
