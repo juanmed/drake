@@ -52,10 +52,10 @@ void HydroelasticTractionCalculator<T>::
     if (data.surface.is_triangle()) {
       std::function<SpatialForce<T>(const Vector3<T>&)> traction_Ac_W =
           [this, &data, i, dissipation,
-           mu_coulomb](const Vector3<T>& Q_barycentric) {
+           mu_coulomb, &sfn_A, &sfn_B](const Vector3<T>& Q_barycentric) {
             const HydroelasticQuadraturePointData<T> traction_output =
                 CalcTractionAtPoint(data, i, Q_barycentric, dissipation,
-                                    mu_coulomb);
+                                    mu_coulomb, sfn_A, sfn_B);
             return ComputeSpatialTractionAtAcFromTractionAtAq(
                 data, traction_output.p_WQ, traction_output.traction_Aq_W);
           };
