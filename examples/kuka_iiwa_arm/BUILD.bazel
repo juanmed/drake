@@ -82,6 +82,7 @@ drake_cc_binary(
     add_test_rule = 1,
     data = [
         ":models",
+        "//examples/hydroelastic/conveyor_gripper:models",
         "@drake_models//:iiwa_description",
     ],
     test_rule_args = ["--simulation_sec=0.1 --target_realtime_rate=0.0"],

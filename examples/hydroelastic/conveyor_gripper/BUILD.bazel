@@ -1,13 +1,12 @@
 load("//tools/skylark:drake_py.bzl", "drake_py_binary")
 
-package(default_visibility = ["//visibility:private"])
+package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "models",
     srcs = [
         "conveyor_gripper_scene.sdf",
     ],
-    visibility = ["//:__pkg__"],
 )
 
 drake_py_binary(
