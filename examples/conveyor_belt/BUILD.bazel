@@ -22,3 +22,23 @@ drake_cc_binary(
         "@gflags",
     ],
 )
+
+drake_cc_binary(
+    name = "conveyor_belt_gripper",
+    srcs = ["conveyor_belt_gripper.cc"],
+    data = [
+        "//examples/hydroelastic/conveyor_gripper:models",
+        "@drake_models//:iiwa_description",
+    ],
+    deps = [
+        "//examples/kuka_iiwa_arm:iiwa_lcm",
+        "//examples/kuka_iiwa_arm:iiwa_common",
+        "//lcm:drake_lcm",
+        "//multibody/plant",
+        "//multibody/parsing",
+        "//systems/analysis:simulator",
+        "//systems/framework:diagram",
+        "//visualization",
+        "@gflags",
+    ]
+)

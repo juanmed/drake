@@ -20,6 +20,7 @@ drake_cc_library(
     deps = [
         "//manipulation/kuka_iiwa:iiwa_constants",
     ],
+    visibility = ["//visibility:public"],
 )
 
 drake_cc_library(
@@ -29,6 +30,7 @@ drake_cc_library(
     deps = [
         "//manipulation/kuka_iiwa",
     ],
+    visibility = ["//visibility:public"],
 )
 
 drake_cc_library(
