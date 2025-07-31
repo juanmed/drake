@@ -10,6 +10,8 @@
 #include "drake/manipulation/kuka_iiwa/iiwa_status_sender.h"
 #include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/multibody_plant.h"
+#include "drake/multibody/plant/multibody_plant_config.h"
+#include "drake/multibody/plant/multibody_plant_config_functions.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/controllers/inverse_dynamics_controller.h"
 #include "drake/systems/framework/diagram_builder.h"
@@ -30,6 +32,12 @@ DEFINE_string(
     graphviz, "/home/juaneng/repos/drake/conveyor_arm.dot",
     "Dump the Simulator's Diagram to this file in Graphviz format as a "
     "debugging aid");
+DEFINE_string(contact_model, "hydroelastic_with_fallback",
+              "Contact model. Options are: 'point', 'hydroelastic', "
+              "'hydroelastic_with_fallback'.");
+DEFINE_string(contact_surface_representation, "polygon",
+              "Contact-surface representation for hydroelastics. "
+              "Options are: 'triangle' or 'polygon'. Default is 'polygon'.");
 
 /// Reorders the generalized force output vector of the ID controller
 /// (internally using a control plant with only the gripper) to match the
@@ -63,9 +71,14 @@ class GeneralizedForceToActuationOrdering : public systems::LeafSystem<double> {
 };
 
 int DoMain() {
+  multibody::MultibodyPlantConfig config;
+  config.time_step = FLAGS_time_step;
+  config.penetration_allowance = 0.001;
+  config.contact_model = FLAGS_contact_model;
+  config.contact_surface_representation = FLAGS_contact_surface_representation;
+
   systems::DiagramBuilder<double> builder;
-  auto [plant, scene_graph] =
-      multibody::AddMultibodyPlantSceneGraph(&builder, FLAGS_time_step);
+  auto [plant, scene_graph] = multibody::AddMultibodyPlant(config, &builder);
 
   // Location of models
   const std::string iiwa_url =
@@ -208,7 +221,7 @@ int DoMain() {
   simulator.set_publish_every_time_step(false);
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
-  simulator.AdvanceTo(100);
+  simulator.AdvanceTo(std::numeric_limits<double>::infinity());
 
   // Draw diagram of plant
   std::ofstream graphviz(FLAGS_graphviz);
