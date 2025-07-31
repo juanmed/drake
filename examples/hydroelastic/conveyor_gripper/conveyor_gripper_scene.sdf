@@ -22,7 +22,7 @@
         </geometry>
         <drake:proximity_properties>
           <drake:compliant_hydroelastic/>
-          <drake:hydroelastic_modulus>1e9</drake:hydroelastic_modulus>
+          <drake:hydroelastic_modulus>5e6</drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint>0.01</drake:mesh_resolution_hint>
           <drake:mu_dynamic>0.5</drake:mu_dynamic>
           <drake:mu_static>0.6</drake:mu_static>
@@ -57,7 +57,7 @@
         </geometry>
         <drake:proximity_properties>
           <drake:compliant_hydroelastic/>
-          <drake:hydroelastic_modulus>1e7</drake:hydroelastic_modulus>
+          <drake:hydroelastic_modulus>1e6</drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint>0.01</drake:mesh_resolution_hint>
           <drake:mu_dynamic>1.4</drake:mu_dynamic>
           <drake:mu_static>1.5</drake:mu_static>
