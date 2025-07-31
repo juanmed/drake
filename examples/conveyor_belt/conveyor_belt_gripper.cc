@@ -158,16 +158,6 @@ int DoMain() {
           num_joints, manipulation::kuka_iiwa::kIiwaLcmStatusPeriod, true);
   desired_state_from_position->set_name("desired_state_from_position");
 
-  // auto status_pub = builder.AddSystem(
-  //     systems::lcm::LcmPublisherSystem::Make<lcmt_iiwa_status>(
-  //         "IIWA_STATUS", lcm,
-  //         manipulation::kuka_iiwa::kIiwaLcmStatusPeriod /* publish period
-  //         */));
-  // status_pub->set_name("status_publisher");
-  // auto status_sender =
-  //     builder.AddSystem<manipulation::kuka_iiwa::IiwaStatusSender>(num_joints);
-  // status_sender->set_name("status_sender");
-
   // Connect the command receiver input to the command subscriber output.
   builder.Connect(command_sub->get_output_port(),
                   command_receiver->get_message_input_port());
@@ -187,16 +177,38 @@ int DoMain() {
   builder.Connect(plant.get_state_output_port(iiwa_instance.at(0)),
                   plant_state_demux->get_input_port(0));
 
+  // Systems to pass along the status of the plant
+  auto status_pub = builder.AddSystem(
+      systems::lcm::LcmPublisherSystem::Make<lcmt_iiwa_status>(
+          "IIWA_STATUS", lcm,
+          manipulation::kuka_iiwa::kIiwaLcmStatusPeriod /* publish period
+          */));
+  status_pub->set_name("status_publisher");
+  auto status_sender =
+      builder.AddSystem<manipulation::kuka_iiwa::IiwaStatusSender>(num_joints);
+  status_sender->set_name("status_sender");
+  builder.Connect(plant_state_demux->get_output_port(0),
+                  status_sender->get_position_measured_input_port());
+  builder.Connect(plant_state_demux->get_output_port(1),
+                  status_sender->get_velocity_estimated_input_port());
+  builder.Connect(command_receiver->get_commanded_position_output_port(),
+                  status_sender->get_position_commanded_input_port());
+  builder.Connect(controller->get_output_port_control(),
+                  status_sender->get_torque_commanded_input_port());
+  builder.Connect(controller->get_output_port_control(),
+                  status_sender->get_torque_measured_input_port());
+  builder.Connect(
+      plant.get_generalized_contact_forces_output_port(iiwa_instance.at(0)),
+      status_sender->get_torque_external_input_port());
+  builder.Connect(status_sender->get_output_port(),
+                  status_pub->get_input_port());
+
   std::unique_ptr<systems::Diagram<double>> diagram = builder.Build();
-
   systems::Simulator<double> simulator(*diagram);
-
   simulator.set_publish_every_time_step(false);
   simulator.set_target_realtime_rate(1.0);
   simulator.Initialize();
-
-  // Simulate for a very long time.
-  simulator.AdvanceTo(40);
+  simulator.AdvanceTo(100);
 
   // Draw diagram of plant
   std::ofstream graphviz(FLAGS_graphviz);

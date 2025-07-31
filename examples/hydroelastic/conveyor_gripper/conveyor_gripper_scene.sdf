@@ -17,7 +17,7 @@
       <collision name="floor_collision">
         <geometry>
           <box>
-            <size>10 10 0.1</size>
+            <size>10 10 0.01</size>
           </box>
         </geometry>
       </collision>
