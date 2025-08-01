@@ -4363,6 +4363,41 @@ T MultibodyPlant<T>::StribeckModel::step5(const T& x) {
   const T x3 = x * x * x;
   return x3 * (10 + x * (6 * x - 15));  // 10x³ - 15x⁴ + 6x⁵
 }
+template <typename T>
+void MultibodyPlant<T>::DeclareSurfaceVelocityInputPort(
+    const geometry::GeometryId geomid,
+    const Vector3<T>& default_velocity_normal, const T& default_speed) {
+  // Check input values
+  if (default_velocity_normal.array().isNaN().any() ||
+      !default_velocity_normal.allFinite()) {
+    return;
+  }
+  // if (std::isnan(default_speed)) {
+  //   return;
+  // }
+
+  if (!geomid.is_valid()) {
+    return;
+  }
+
+  // Store this geometry's default speed and velocity
+  geomid_to_surface_speed_normal_[geomid] = {default_speed,
+                                             default_velocity_normal};
+
+  // Recover name of the geometry affected by the input ports.
+  const SceneGraphInspector<T>& scene_graph_inspector =
+      scene_graph_->model_inspector();
+  const std::string geom_name = scene_graph_inspector.GetName(geomid);
+
+  // Declare input ports to specify both speed and velocity normal
+  std::string speed_input_port_name = geom_name + "_surface_speed_input";
+  this->DeclareVectorInputPort(speed_input_port_name, 1);
+  std::string normal_input_port_name =
+      geom_name + "_surface_velocity_normal_input";
+  this->DeclareVectorInputPort(normal_input_port_name,
+                               systems::BasicVector<T>(3));
+  return;
+}
 
 template <typename T>
 AddMultibodyPlantSceneGraphResult<T> AddMultibodyPlantSceneGraph(

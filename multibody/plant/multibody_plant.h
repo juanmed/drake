@@ -5694,6 +5694,18 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
       const geometry::SceneGraphInspector<T>& inspector,
       const math::RigidTransform<T>& X_W) const;
 
+  // Creates two input ports that together define the surface speed for
+  // the collision geometries belonging to the input body.
+  // When this function is called, it first checks that the geometry
+  // was created with drake:proximity_properties, and has parameters
+  // drake:surface_speed and drake:surface_velocity_normal. If the check
+  // passes, it sets default values for the velocity_normal and speed based on
+  // the input parameteres. It also declares two input ports: one for the speed
+  // which is scalar, and one for the velocity_normal, which is a 3-vector.
+  void DeclareSurfaceVelocityInputPort(
+      const geometry::GeometryId geomid,
+      const Vector3<T>& default_velocity_normal, const T& default_speed);
+
   /// @} <!-- Introspection -->
 
 #ifndef DRAKE_DOXYGEN_CXX

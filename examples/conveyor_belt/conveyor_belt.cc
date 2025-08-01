@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include <gflags/gflags.h>
 
 #include "drake/geometry/meshcat.h"
@@ -35,6 +37,10 @@ DEFINE_double(dissipation, 3.0,
 DEFINE_double(friction_coefficient, 0.3,
               "coefficient for both static and dynamic friction, [unitless], "
               "of the ball.");
+DEFINE_string(
+    graphviz, "/home/juaneng/repos/drake/conveyor_belt.dot",
+    "Dump the Simulator's Diagram to this file in Graphviz format as a "
+    "debugging aid");
 
 int do_main_continous_plant() {
   multibody::MultibodyPlantConfig config;
@@ -49,6 +55,13 @@ int do_main_continous_plant() {
   std::string conveyor_belt_url =
       "package://drake/examples/conveyor_belt/conveyor_belt.sdf";
   multibody::Parser(&builder).AddModelsFromUrl(conveyor_belt_url);
+
+  const multibody::RigidBody<double>& body =
+      plant.GetBodyByName("conveyor_belt");
+  const geometry::GeometryId geom_id =
+      plant.GetCollisionGeometriesForBody(body).at(0);
+  plant.DeclareSurfaceVelocityInputPort(geom_id, Vector3<double>(0.0, 0.0, 0.0),
+                                        1.0);
   plant.Finalize();
 
   // Set up visualization
@@ -72,6 +85,11 @@ int do_main_continous_plant() {
 
   // Force visualization
   diagram->ForcedPublish(*context);
+
+  // Draw diagram of plant
+  std::ofstream graphviz(FLAGS_graphviz);
+  std::map<std::string, std::string> options{{"plant/split", "I/O"}};
+  graphviz << diagram->GetGraphvizString({}, options);
 
   // Set up simulator
   systems::Simulator<double> simulator(*diagram);
