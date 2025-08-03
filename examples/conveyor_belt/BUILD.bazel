@@ -19,6 +19,7 @@ drake_cc_binary(
         "//systems/analysis:simulator",
         "//systems/framework:diagram",
         "//systems/framework:leaf_system",
+        "//systems/primitives:sine",
         "@gflags",
     ],
 )

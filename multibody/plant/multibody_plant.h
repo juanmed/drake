@@ -5714,7 +5714,23 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
       const geometry::GeometryId geomid,
       const Vector3<T>& default_velocity_normal, const T& default_speed);
 
-  /// @} <!-- Introspection -->
+  std::optional<std::reference_wrapper<const systems::InputPort<T>>>
+  get_surface_speed_input_port() const {
+    if (surface_speed_input_port_index_.has_value()) {
+      return this->get_input_port(surface_speed_input_port_index_.value());
+    }
+    return std::nullopt;
+  };
+
+  std::optional<std::reference_wrapper<const systems::InputPort<T>>>
+  get_surface_velocity_normal_input_port() const {
+    if (surface_velocity_normal_input_port_index_.has_value()) {
+      return this->get_input_port(
+          surface_velocity_normal_input_port_index_.value());
+    }
+    return std::nullopt;
+  };
+    /// @} <!-- Introspection -->
 
 #ifndef DRAKE_DOXYGEN_CXX
   // Internal-only access to LinkJointGraph::FindSubgraphsOfWeldedBodies();

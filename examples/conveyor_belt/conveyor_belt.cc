@@ -12,6 +12,7 @@
 #include "drake/multibody/plant/multibody_plant_config_functions.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram_builder.h"
+#include "drake/systems/primitives/sine.h"
 
 namespace drake {
 namespace examples {
@@ -56,13 +57,25 @@ int do_main_continous_plant() {
       "package://drake/examples/conveyor_belt/conveyor_belt.sdf";
   multibody::Parser(&builder).AddModelsFromUrl(conveyor_belt_url);
 
+  // Overrides the surface speed and surface velocity normal defined through
+  // the sdf file, and also create their input ports to dynamic modify them.
   const multibody::RigidBody<double>& body =
       plant.GetBodyByName("conveyor_belt");
   const geometry::GeometryId geom_id =
       plant.GetCollisionGeometriesForBody(body).at(0);
-  plant.DeclareSurfaceVelocityInputPort(geom_id, Vector3<double>(0.0, 0.0, 0.0),
+  plant.DeclareSurfaceVelocityInputPort(geom_id, Vector3<double>(0.0, 1.0, 0.0),
                                         1.0);
   plant.Finalize();
+
+  // Add a sine wave generator. This will be connected to the surface speed
+  // input port.
+  double amplitude = 1.0;
+  double frequency = 2 * M_PI;
+  double phase = 0.0;
+  drake::systems::Sine<double>* sine_generator =
+      builder.AddSystem<systems::Sine<double>>(amplitude, frequency, phase, 1);
+  builder.Connect(sine_generator->get_output_port(0),
+                  plant.get_surface_speed_input_port().value().get());
 
   // Set up visualization
   auto meshcat = std::make_shared<geometry::Meshcat>();
