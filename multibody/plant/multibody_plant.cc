@@ -4391,11 +4391,16 @@ void MultibodyPlant<T>::DeclareSurfaceVelocityInputPort(
 
   // Declare input ports to specify both speed and velocity normal
   std::string speed_input_port_name = geom_name + "_surface_speed_input";
-  this->DeclareVectorInputPort(speed_input_port_name, 1);
+  systems::InputPortIndex ss_index =
+      this->DeclareVectorInputPort(speed_input_port_name, 1).get_index();
+  surface_speed_input_port_index_.emplace(ss_index);
   std::string normal_input_port_name =
       geom_name + "_surface_velocity_normal_input";
-  this->DeclareVectorInputPort(normal_input_port_name,
-                               systems::BasicVector<T>(3));
+  systems::InputPortIndex svn_index =
+      this->DeclareVectorInputPort(normal_input_port_name,
+                                   systems::BasicVector<T>(3))
+          .get_index();
+  surface_velocity_normal_input_port_index_.emplace(svn_index);
   return;
 }
 
