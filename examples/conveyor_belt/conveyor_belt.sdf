@@ -47,7 +47,7 @@
       <visual name="conveyor_belt_visual">
         <geometry>
           <box>
-            <size>10.0 1.0 0.1</size>
+            <size>10.0 10.0 0.1</size>
           </box>
         </geometry>
         <material>
@@ -58,7 +58,7 @@
       <collision name="conveyor_belt_collision">
         <geometry>
           <box>
-            <size>10.0 1.0 0.1</size>
+            <size>10.0 10.0 0.1</size>
           </box>
         </geometry>
         <drake:proximity_properties>

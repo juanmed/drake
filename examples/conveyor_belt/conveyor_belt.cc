@@ -19,7 +19,7 @@ namespace examples {
 namespace conveyor_belt {
 namespace {
 
-DEFINE_double(time_step, 0.0, "Simulation time step used for integrator.");
+DEFINE_double(time_step, 0.003, "Simulation time step used for integrator.");
 DEFINE_string(contact_model, "hydroelastic",
               "Contact model. Options are: 'point', 'hydroelastic', "
               "'hydroelastic_with_fallback'.");
@@ -42,6 +42,26 @@ DEFINE_string(
     graphviz, "/home/juaneng/repos/drake/conveyor_belt.dot",
     "Dump the Simulator's Diagram to this file in Graphviz format as a "
     "debugging aid");
+
+class SineVectorGenerator : public systems::LeafSystem<double> {
+ public:
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(SineVectorGenerator);
+  SineVectorGenerator() {
+    this->DeclareVectorOutputPort("sine_cosine",
+                                  systems::BasicVector<double>(3),
+                                  &SineVectorGenerator::calc_output);
+  }
+
+  void calc_output(const systems::Context<double>& context,
+                   systems::BasicVector<double>* output_vector) const {
+    Eigen::VectorBlock<Eigen::VectorX<double>> output_value =
+        output_vector->get_mutable_value();
+    Vector3<double> out = Vector3<double>::Zero();
+    out.x() = std::sin(context.get_time());
+    out.y() = std::cos(context.get_time());
+    output_value = out;
+  }
+};
 
 int do_main_continous_plant() {
   multibody::MultibodyPlantConfig config;
@@ -70,12 +90,15 @@ int do_main_continous_plant() {
   // Add a sine wave generator. This will be connected to the surface speed
   // input port.
   double amplitude = 1.0;
-  double frequency = 2 * M_PI;
+  double frequency = 1.0;
   double phase = 0.0;
   drake::systems::Sine<double>* sine_generator =
       builder.AddSystem<systems::Sine<double>>(amplitude, frequency, phase, 1);
+  auto sine_vector_gen = builder.AddSystem<SineVectorGenerator>();
   builder.Connect(sine_generator->get_output_port(0),
                   plant.get_surface_speed_input_port().value().get());
+  builder.Connect(sine_vector_gen->get_output_port(),
+                  plant.get_surface_velocity_normal_input_port().value().get());
 
   // Set up visualization
   auto meshcat = std::make_shared<geometry::Meshcat>();
