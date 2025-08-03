@@ -83,7 +83,7 @@ GTEST_TEST(SurfaceVelocityTest, BoxSurfaceVelocity) {
   for (const Eigen::Vector3d& c_G : contacts_G) {
     const Eigen::Vector3d c_W = pose * c_G;
     Eigen::Vector3d surface_v = plant.GetSurfaceVelocity(
-        belt_geom_id, scene_graph.model_inspector(), pose, c_W);
+        *context, belt_geom_id, scene_graph.model_inspector(), pose, c_W);
 
     // Verify the direction of surface velocity is equal to cross product
     // between the surface normal at each contact point and the velocity
