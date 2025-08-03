@@ -1739,20 +1739,90 @@ MultibodyPlant<T>::GetSurfaceVelocityNormal(
 }
 
 template <typename T>
+std::optional<std::pair<T, Vector3<T>>>
+MultibodyPlant<T>::GetCurrentSurfaceSpeedAndNormal(
+    const systems::Context<T>& context, geometry::GeometryId id,
+    const geometry::SceneGraphInspector<T>& inspector) const {
+  std::optional<T> surface_speed;
+  std::optional<Eigen::Vector3<T>> velocity_normal;
+
+  // The logic here is intended to prioritize surface velocity parameters
+  // obtained through input ports over those obtained from proximity properties
+  // defined in .sdf or .urdf files. The priority is as follows (1 is
+  // highest priority):
+  //  1. Values in input ports, if connected.
+  //  2. Default values defined through DeclareSurfaceVelocityInputPort
+  //  3. Values defined through the drake:surface_speed and
+  //  drake:surface_velocity_normal proximity_properties.
+
+  // If default values where defined, they are already present in
+  // geomid_to_surface_speed_normal_. If not, these should be read from
+  // proximity properties
+  const auto iter = geomid_to_surface_speed_normal_.find(id);
+  if (iter == geomid_to_surface_speed_normal_.end()) {
+    // Get surface speed for this geometry.
+    surface_speed = GetSurfaceSpeed(id, inspector);
+    if (!surface_speed.has_value()) {
+      return std::nullopt;
+    }
+    // Get surface velocity normal for this geometry.
+    velocity_normal = GetSurfaceVelocityNormal(id, inspector);
+    if (!velocity_normal.has_value()) {
+      return std::nullopt;
+    }
+  } else {
+    // First check if the input port for surface speed is connected. If yes,
+    // read and use that values. Otherwise use the default value.
+    if (surface_speed_input_port_index_.has_value()) {
+      const InputPort<T>& ss_input_port =
+          this->get_input_port(surface_speed_input_port_index_.value());
+      if (ss_input_port.HasValue(context)) {
+        surface_speed.emplace(ss_input_port.Eval(context)(0));
+      } else {
+        surface_speed.emplace(geomid_to_surface_speed_normal_.at(id).first);
+      }
+    } else {
+      surface_speed.emplace(geomid_to_surface_speed_normal_.at(id).first);
+    }
+
+    // Same logic applies to read surface velocity normal.
+    if (surface_velocity_normal_input_port_index_.has_value()) {
+      const InputPort<T>& svn_input_port = this->get_input_port(
+          surface_velocity_normal_input_port_index_.value());
+      if (svn_input_port.HasValue(context)) {
+        const Vector3<T>& svn_value = svn_input_port.Eval(context);
+        if (svn_value.hasNaN()) {
+          throw std::runtime_error(
+              "Detected NaN in applied generalized force input port.");
+        }
+        velocity_normal.emplace(svn_value);
+      } else {
+        velocity_normal.emplace(geomid_to_surface_speed_normal_.at(id).second);
+      }
+    } else {
+      velocity_normal.emplace(geomid_to_surface_speed_normal_.at(id).second);
+    }
+  }
+
+  return {{surface_speed.value(), velocity_normal.value()}};
+}
+
+template <typename T>
 Vector3<T> MultibodyPlant<T>::GetSurfaceVelocity(
-    geometry::GeometryId id, const geometry::SceneGraphInspector<T>& inspector,
+    const systems::Context<T>& context, geometry::GeometryId id,
+    const geometry::SceneGraphInspector<T>& inspector,
     const RigidTransform<T>& X_W, const Vector3<T>& p_WC) const {
   Vector3<T> surface_velocity = Vector3<T>::Zero();
+  T surface_speed;
+  Eigen::Vector3<T> velocity_normal;
 
-  // Get surface speed for this geometry
-  std::optional<double> surface_speed = GetSurfaceSpeed(id, inspector);
-  if (!surface_speed.has_value()) {
-    return surface_velocity;
-  }
-  // Get surface velocity normal for this geometry
-  std::optional<Eigen::Vector3<T>> velocity_normal =
-      GetSurfaceVelocityNormal(id, inspector);
-  if (!velocity_normal.has_value()) {
+  std::optional<std::pair<T, Vector3<T>>> surface_params =
+      GetCurrentSurfaceSpeedAndNormal(context, id, inspector);
+
+  if (surface_params.has_value()) {
+    surface_speed = surface_params.value().first;
+    velocity_normal = surface_params.value().second;
+  } else {
     return surface_velocity;
   }
 
@@ -1771,28 +1841,32 @@ Vector3<T> MultibodyPlant<T>::GetSurfaceVelocity(
   // The velocity vector is the cross product between the velocity_normal
   // and the surface normal, in that order. Its magnitude is the surface speed.
   surface_velocity =
-      surface_speed.value() *
-      (velocity_normal.value().cross(normal_at_p_GC.value()).normalized());
+      surface_speed *
+      (velocity_normal.cross(normal_at_p_GC.value()).normalized());
   return surface_velocity;
 }
 
 template <typename T>
 const std::optional<Eigen::Vector3<T>>
 MultibodyPlant<T>::GetSurfaceSpeedAndNormal(
-    const geometry::GeometryId id,
+    const systems::Context<T>& context, const geometry::GeometryId id,
     const geometry::SceneGraphInspector<T>& inspector,
     const RigidTransform<T>& X_W) const {
-  std::optional<double> surface_speed = GetSurfaceSpeed(id, inspector);
-  if (!surface_speed.has_value()) {
+  T surface_speed;
+  Eigen::Vector3<T> velocity_normal;
+
+  std::optional<std::pair<T, Vector3<T>>> surface_params =
+      GetCurrentSurfaceSpeedAndNormal(context, id, inspector);
+
+  if (surface_params.has_value()) {
+    surface_speed = surface_params.value().first;
+    velocity_normal = surface_params.value().second;
+  } else {
     return std::nullopt;
   }
-  std::optional<Eigen::Vector3<T>> velocity_normal =
-      GetSurfaceVelocityNormal(id, inspector);
-  if (!velocity_normal.has_value()) {
-    return std::nullopt;
-  }
+
   Eigen::Vector3<T> speed_and_normal_W =
-      X_W.rotation() * (surface_speed.value() * velocity_normal.value());
+      X_W.rotation() * (surface_speed * velocity_normal);
   return speed_and_normal_W;
 }
 
@@ -2442,10 +2516,10 @@ void MultibodyPlant<T>::CalcContactResultsPointPairContinuous(
 
     // Get surface velocity at Ca relative to A in coordinates of A
     const Vector3<T> v_ACa_ss =
-        GetSurfaceVelocity(geometryA_id, inspector, X_WA, p_WCa);
+        GetSurfaceVelocity(context, geometryA_id, inspector, X_WA, p_WCa);
     // Get surface velocity at Cb relative to B in coordinates of B
     const Vector3<T> v_BCb_ss =
-        GetSurfaceVelocity(geometryB_id, inspector, X_WB, p_WCb);
+        GetSurfaceVelocity(context, geometryB_id, inspector, X_WB, p_WCb);
 
     // Separation velocity, > 0  if objects separate.
     // Account for any surface velocities.
@@ -2669,9 +2743,9 @@ void MultibodyPlant<T>::CalcHydroelasticContactForcesContinuous(
     // scalar encoded in the magnitude of the returned vector, and the normal
     // vector is recovered by normalizing its.
     const std::optional<Eigen::Vector3<T>> v_ACo_W_ss =
-        GetSurfaceSpeedAndNormal(geometryM_id, inspector, X_WA);
+        GetSurfaceSpeedAndNormal(context, geometryM_id, inspector, X_WA);
     const std::optional<Eigen::Vector3<T>> v_BCo_W_ss =
-        GetSurfaceSpeedAndNormal(geometryN_id, inspector, X_WB);
+        GetSurfaceSpeedAndNormal(context, geometryN_id, inspector, X_WB);
 
     // Integrate the hydroelastic traction field over the contact surface.
     SpatialForce<T> F_Ac_W;

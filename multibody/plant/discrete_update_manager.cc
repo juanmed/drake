@@ -709,12 +709,12 @@ void DiscreteUpdateManager<T>::AppendDiscreteContactPairsForPointContact(
     // transform to world frame W.
     const Vector3<T> v_ACa_W_ss =
         X_WA.rotation() *
-        plant().GetSurfaceVelocity(pair.id_A, inspector, X_WA, pair.p_WCa);
+        plant().GetSurfaceVelocity(context, pair.id_A, inspector, X_WA, pair.p_WCa);
     // Get surface velocity at Cb relative to B in coordinates of B and
     // transform to world frame W.
     const Vector3<T> v_BCb_W_ss =
         X_WB.rotation() *
-        plant().GetSurfaceVelocity(pair.id_B, inspector, X_WB, pair.p_WCb);
+        plant().GetSurfaceVelocity(context, pair.id_B, inspector, X_WB, pair.p_WCb);
     // Relative separation velocity due to surface velocity in contact frame C.
     const Vector3<T> v_AcBc_C_ss = R_WC.transpose() * (v_BCb_W_ss - v_ACa_W_ss);
 
@@ -1029,9 +1029,9 @@ void DiscreteUpdateManager<T>::AppendDiscreteContactPairsForHydroelasticContact(
         // a scalar encoded in the magnitude of the returned vector, and the
         // normal vector is recovered by normalizing its.
         const std::optional<Vector3<T>> v_ACo_W_ss =
-            plant().GetSurfaceSpeedAndNormal(s.id_M(), inspector, X_WA);
+            plant().GetSurfaceSpeedAndNormal(context, s.id_M(), inspector, X_WA);
         const std::optional<Vector3<T>> v_BCo_W_ss =
-            plant().GetSurfaceSpeedAndNormal(s.id_N(), inspector, X_WB);
+            plant().GetSurfaceSpeedAndNormal(context, s.id_N(), inspector, X_WB);
 
         // Compute surface speed at quadrature point by computing cross
         // product with its normal vector. The normal vector is such that

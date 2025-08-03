@@ -5679,18 +5679,26 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
     return internal_tree().graph();
   }
 
+  // Read the surface speed and surface velocity normal from the correct source
+  // based on priority. There are 3 possible sources, in order of priority:
+  // input port, default value passed programmatically, or default value passed
+  // through description file.
+  std::optional<std::pair<T, Vector3<T>>> GetCurrentSurfaceSpeedAndNormal(
+      const systems::Context<T>& context, geometry::GeometryId id,
+      const geometry::SceneGraphInspector<T>& inspector) const;
+
   // Get the surface velocity defined by the proximity properties
   // drake:surface_speed and drake:surface_velocity_normal. The velocity
   // is computed at the point p_WC, which should be point very close (1mm)
   // to the surface and expressed in the world frame. The velocity is
   // expressed in the local frame of geometry identified by id.
   Vector3<T> GetSurfaceVelocity(
-      geometry::GeometryId id,
+      const systems::Context<T>& context, geometry::GeometryId id,
       const geometry::SceneGraphInspector<T>& inspector,
       const math::RigidTransform<T>& X_W, const Vector3<T>& p_WC) const;
 
   const std::optional<Eigen::Vector3<T>> GetSurfaceSpeedAndNormal(
-      const geometry::GeometryId id,
+      const systems::Context<T>& context, const geometry::GeometryId id,
       const geometry::SceneGraphInspector<T>& inspector,
       const math::RigidTransform<T>& X_W) const;
 
@@ -6522,6 +6530,19 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
   // this with all-zero data, for use when the State has not yet been stepped.
   std::unique_ptr<internal::AccelerationKinematicsCache<T>>
       zero_acceleration_kinematics_placeholder_;
+
+  // A container to cache the parameters used to compute a surface velocity.
+  // If a geometry's id is contained here, a surface speed and surface velocity
+  // normal were defined either in a robot description file (.sdf, .urdf) as
+  // drake:proximity_properties: drake:surface_speed and
+  // drake:surface_velocity_normal. Or programatically by calling
+  // DeclareSurfaceVelocityInputPort through its default_velocity_normal and
+  // default_speed parameters.
+  std::map<geometry::GeometryId, std::pair<T, Eigen::Vector3<T>>>
+      geomid_to_surface_speed_normal_;
+  std::optional<systems::InputPortIndex> surface_speed_input_port_index_;
+  std::optional<systems::InputPortIndex>
+      surface_velocity_normal_input_port_index_;
 
   InputPortIndices input_port_indices_;
   OutputPortIndices output_port_indices_;
