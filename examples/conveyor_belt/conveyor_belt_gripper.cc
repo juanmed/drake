@@ -95,7 +95,7 @@ int DoMain() {
   // Load gripper and fix it to the robots end-effector frame
   auto gripper_instance = parser.AddModelsFromUrl(belt_gripper_url);
   math::RigidTransformd X_WB(math::RollPitchYawd(0.0, 1.57079, 0.0),
-                             Eigen::Vector3d(0.0, 0., 0.2));
+                             Eigen::Vector3d(0.0, -0.05, 0.2));
   plant.WeldFrames(plant.GetFrameByName("iiwa_link_ee_kuka"),
                    plant.GetFrameByName("gripper"), X_WB);
   plant.Finalize();
