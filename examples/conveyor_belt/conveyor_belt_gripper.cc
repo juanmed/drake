@@ -5,6 +5,7 @@
 
 #include "drake/examples/kuka_iiwa_arm/iiwa_common.h"
 #include "drake/examples/kuka_iiwa_arm/iiwa_lcm.h"
+#include "drake/geometry/scene_graph_config.h"
 #include "drake/manipulation/kuka_iiwa/iiwa_command_receiver.h"
 #include "drake/manipulation/kuka_iiwa/iiwa_constants.h"
 #include "drake/manipulation/kuka_iiwa/iiwa_status_sender.h"
@@ -73,12 +74,15 @@ class GeneralizedForceToActuationOrdering : public systems::LeafSystem<double> {
 int DoMain() {
   multibody::MultibodyPlantConfig config;
   config.time_step = FLAGS_time_step;
-  config.penetration_allowance = 0.001;
   config.contact_model = FLAGS_contact_model;
   config.contact_surface_representation = FLAGS_contact_surface_representation;
 
+  geometry::SceneGraphConfig scene_graph_config;
+  scene_graph_config.default_proximity_properties.margin = 1e-3;
+
   systems::DiagramBuilder<double> builder;
-  auto [plant, scene_graph] = multibody::AddMultibodyPlant(config, &builder);
+  auto [plant, scene_graph] =
+      multibody::AddMultibodyPlant(config, scene_graph_config, &builder);
 
   // Location of models
   const std::string iiwa_url =

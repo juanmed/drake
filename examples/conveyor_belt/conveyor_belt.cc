@@ -71,8 +71,12 @@ int do_main_continous_plant() {
   config.contact_model = FLAGS_contact_model;
   config.contact_surface_representation = FLAGS_contact_surface_representation;
 
+  geometry::SceneGraphConfig scene_graph_config;
+  scene_graph_config.default_proximity_properties.margin = 1e-3;
+
   systems::DiagramBuilder<double> builder;
-  auto [plant, scene_graph] = multibody::AddMultibodyPlant(config, &builder);
+  auto [plant, scene_graph] =
+      multibody::AddMultibodyPlant(config, scene_graph_config, &builder);
   std::string conveyor_belt_url =
       "package://drake/examples/conveyor_belt/conveyor_belt.sdf";
   multibody::Parser(&builder).AddModelsFromUrl(conveyor_belt_url);

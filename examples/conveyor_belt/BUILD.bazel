@@ -32,6 +32,7 @@ drake_cc_binary(
         "@drake_models//:iiwa_description",
     ],
     deps = [
+        "//geometry:scene_graph_config",
         "//examples/kuka_iiwa_arm:iiwa_lcm",
         "//examples/kuka_iiwa_arm:iiwa_common",
         "//lcm:drake_lcm",

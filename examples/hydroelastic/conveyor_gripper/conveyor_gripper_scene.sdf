@@ -36,7 +36,7 @@
     </joint>
 
     <link name="large_support">
-      <pose>0.0 0.9 0.255 0 0 0</pose>
+      <pose>0.0 1.0 0.255 0 0 0</pose>
       <visual name="large_support_visual">
         <geometry>
           <box>
@@ -67,27 +67,27 @@
 
     <!-- Boxes -->
     <link name="box_1">
-      <pose>0.0 0.6 0.9 0 0 0</pose>
+      <pose>0.3 0.7 0.9 0 0 0</pose>
       <visual name="box_1_visual">
         <geometry>
           <box>
-            <size>0.3 0.3 0.3</size>
+            <size>0.3 0.3 0.15</size>
           </box>
         </geometry>
         <material>
-          <ambient>1.0 0.0 0.0 1.0</ambient> <!-- Red -->
-          <diffuse>1.0 0.0 0.0 1.0</diffuse>
+          <ambient>1.0 0.0 0.0 0.6</ambient> <!-- Red -->
+          <diffuse>1.0 0.0 0.0 0.6</diffuse>
         </material>
       </visual>
       <collision name="box_1_collision">
         <geometry>
           <box>
-            <size>0.3 0.3 0.3</size>
+            <size>0.3 0.3 0.15</size>
           </box>
         </geometry>
         <drake:proximity_properties>
           <drake:compliant_hydroelastic/>
-          <drake:hydroelastic_modulus>1e6</drake:hydroelastic_modulus>
+          <drake:hydroelastic_modulus>1e5</drake:hydroelastic_modulus>
           <drake:mesh_resolution_hint>0.01</drake:mesh_resolution_hint>
           <drake:mu_dynamic>1.4</drake:mu_dynamic>
           <drake:mu_static>1.5</drake:mu_static>
@@ -97,7 +97,7 @@
     </link>
 
     <link name="gripper">
-      <pose>0.0 0.0 0.0 0 0 0</pose>
+      <pose>0.0 0.0 0.0 0 0 0.3</pose>
       <visual name="gripper_visual">
         <geometry>
           <box>
@@ -105,8 +105,8 @@
           </box>
         </geometry>
         <material>
-          <ambient>0.43 0.3 0.7 1.0</ambient> <!-- Gray -->
-          <diffuse>0.43 0.3 0.7 1.0</diffuse>
+          <ambient>0.43 0.3 0.7 0.6</ambient> <!-- Gray -->
+          <diffuse>0.43 0.3 0.7 0.6</diffuse>
         </material>
       </visual>
       <collision name="gripper_collision">
@@ -122,7 +122,7 @@
           <drake:mu_dynamic>1.4</drake:mu_dynamic>
           <drake:mu_static>1.5</drake:mu_static>
           <drake:hunt_crossley_dissipation>5</drake:hunt_crossley_dissipation>
-          <drake:surface_speed>1.0</drake:surface_speed>
+          <drake:surface_speed>0.5</drake:surface_speed>
           <drake:surface_velocity_normal>0 0 1</drake:surface_velocity_normal>
         </drake:proximity_properties>
       </collision>
