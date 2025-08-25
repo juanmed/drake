@@ -89,7 +89,7 @@ int DoMain() {
       "package://drake_models/iiwa_description/urdf/"
       "iiwa14_polytope_collision.urdf";
   const std::string belt_gripper_url =
-      "package://drake/examples/hydroelastic/conveyor_gripper/"
+      "package://drake/examples/conveyor_belt/"
       "conveyor_gripper_scene.sdf";
 
   multibody::Parser parser(&builder);

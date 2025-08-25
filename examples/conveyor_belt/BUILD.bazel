@@ -2,6 +2,9 @@ load(
     "//tools/skylark:drake_cc.bzl",
     "drake_cc_binary",
 )
+load("//tools/skylark:drake_py.bzl", "drake_py_binary")
+
+package(default_visibility = ["//visibility:public"])
 
 drake_cc_binary(
     name = "conveyor_belt",
@@ -28,7 +31,7 @@ drake_cc_binary(
     name = "conveyor_belt_gripper",
     srcs = ["conveyor_belt_gripper.cc"],
     data = [
-        "//examples/hydroelastic/conveyor_gripper:models",
+        "conveyor_gripper_scene.sdf",
         "@drake_models//:iiwa_description",
     ],
     deps = [
@@ -43,4 +46,18 @@ drake_cc_binary(
         "//visualization",
         "@gflags",
     ]
+)
+
+drake_py_binary(
+    name = "conveyor_gripper",
+    srcs = ["conveyor_gripper.py"],
+    add_test_rule = 1,
+    data = [":models"],
+    test_rule_args = [
+        "--target_realtime_rate=0",
+        "--simulation_time=0.1",
+    ],
+    deps = [
+        "//bindings/pydrake",
+    ],
 )
