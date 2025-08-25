@@ -55,19 +55,44 @@ using systems::controllers::InverseDynamicsController;
 using systems::controllers::StateFeedbackControllerInterface;
 
 int DoMain() {
-  systems::DiagramBuilder<double> builder;
+  systems::DiagramBuilder<double> sim_builder;
 
-  // Adds a plant.
-  auto [plant, scene_graph] =
-      multibody::AddMultibodyPlantSceneGraph(&builder, FLAGS_sim_dt);
+  // Adds a sim_plant.
+  auto [sim_plant, scene_graph] =
+      multibody::AddMultibodyPlantSceneGraph(&sim_builder, FLAGS_sim_dt);
   const char* kModelUrl =
       "package://drake_models/iiwa_description/"
       "urdf/iiwa14_polytope_collision.urdf";
   const std::string urdf =
       (!FLAGS_urdf.empty() ? FLAGS_urdf : PackageMap{}.ResolveUrl(kModelUrl));
-  auto iiwa_instance = multibody::Parser(&builder).AddModels(urdf).at(0);
-  plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("base"));
-  plant.Finalize();
+  const multibody::ModelInstanceIndex iiwa_instance_sim =
+      multibody::Parser(&sim_builder).AddModels(urdf).at(0);
+  sim_plant.WeldFrames(sim_plant.world_frame(),
+                       sim_plant.GetFrameByName("base"));
+  const char* gripper_url =
+      "package://drake_models/iiwa_description/"
+      "urdf/iiwa14_polytope_collision.urdf";
+  const std::string gripper_sdf = PackageMap{}.ResolveUrl(gripper_url);
+  const multibody::ModelInstanceIndex gripper_instance =
+      multibody::Parser(&sim_builder).AddModels(gripper_sdf).at(0);
+  (void)gripper_instance;
+  math::RigidTransformd X_WB(math::RollPitchYawd(0.0, 1.57079, 0.0),
+                             Eigen::Vector3d(0.0, 0., 0.2));
+  sim_plant.WeldFrames(sim_plant.GetFrameByName("iiwa_link_ee_kuka"),
+                       sim_plant.GetFrameByName("gripper"), X_WB);
+
+  auto iiwa_model_instance_sim = sim_plant.GetModelInstanceByName("iiwa14");
+  sim_plant.RenameModelInstance(iiwa_model_instance_sim, "iiwa14_sim");
+  sim_plant.Finalize();
+
+  // Add a control plant
+  systems::DiagramBuilder<double> builder;
+  auto control_plant =
+      builder.AddSystem<multibody::MultibodyPlant<double>>(0.0);
+  multibody::Parser control_parser(&builder);
+  auto iiwa_instance = control_parser.AddModels(urdf).at(0);
+  control_plant->RenameModelInstance(iiwa_instance, "iiwa_robot_2");
+  control_plant->Finalize();
 
   // TODO(sammy-tri) Add a floor.
 
@@ -78,7 +103,7 @@ int DoMain() {
 
   // Since we welded the model to the world above, the only remaining joints
   // should be those in the arm.
-  const int num_joints = plant.num_positions();
+  const int num_joints = control_plant->num_positions();
   DRAKE_DEMAND(num_joints % kIiwaArmNumJoints == 0);
   const int num_iiwa = num_joints / kIiwaArmNumJoints;
 
@@ -90,7 +115,7 @@ int DoMain() {
     stiffness = stiffness.replicate(num_iiwa, 1).eval();
     damping_ratio = damping_ratio.replicate(num_iiwa, 1).eval();
     controller = builder.AddSystem<KukaTorqueController<double>>(
-        plant, stiffness, damping_ratio);
+        *control_plant, stiffness, damping_ratio);
   } else {
     VectorX<double> iiwa_kp, iiwa_kd, iiwa_ki;
     SetPositionControlledIiwaGains(&iiwa_kp, &iiwa_ki, &iiwa_kd);
@@ -98,7 +123,7 @@ int DoMain() {
     iiwa_kd = iiwa_kd.replicate(num_iiwa, 1).eval();
     iiwa_ki = iiwa_ki.replicate(num_iiwa, 1).eval();
     controller = builder.AddSystem<InverseDynamicsController<double>>(
-        plant, iiwa_kp, iiwa_ki, iiwa_kd,
+        *control_plant, iiwa_kp, iiwa_ki, iiwa_kd,
         false /* without feedforward acceleration */);
   }
 
@@ -132,7 +157,7 @@ int DoMain() {
                   desired_state_from_position->get_input_port());
   builder.Connect(desired_state_from_position->get_output_port(),
                   controller->get_input_port_desired_state());
-  builder.Connect(plant.get_state_output_port(iiwa_instance),
+  builder.Connect(control_plant->get_state_output_port(iiwa_instance),
                   plant_state_demux->get_input_port(0));
   builder.Connect(plant_state_demux->get_output_port(0),
                   status_sender->get_position_measured_input_port());
@@ -140,10 +165,10 @@ int DoMain() {
                   status_sender->get_velocity_estimated_input_port());
   builder.Connect(command_receiver->get_commanded_position_output_port(),
                   status_sender->get_position_commanded_input_port());
-  builder.Connect(plant.get_state_output_port(),
+  builder.Connect(control_plant->get_state_output_port(),
                   controller->get_input_port_estimated_state());
   builder.Connect(controller->get_output_port_control(),
-                  plant.get_actuation_input_port(iiwa_instance));
+                  control_plant->get_actuation_input_port(iiwa_instance));
   builder.Connect(controller->get_output_port_control(),
                   status_sender->get_torque_commanded_input_port());
   builder.Connect(controller->get_output_port_control(),
@@ -151,7 +176,7 @@ int DoMain() {
   // TODO(sammy-tri) Add a low-pass filter for simulated external torques.
   // This would slow the simulation significantly, however.  (see #12631)
   builder.Connect(
-      plant.get_generalized_contact_forces_output_port(iiwa_instance),
+      control_plant->get_generalized_contact_forces_output_port(iiwa_instance),
       status_sender->get_torque_external_input_port());
   builder.Connect(status_sender->get_output_port(),
                   status_pub->get_input_port());
@@ -163,6 +188,16 @@ int DoMain() {
     builder.Connect(command_receiver->get_commanded_torque_output_port(),
                     torque_controller->get_input_port_commanded_torque());
   }
+
+  // Connect control: robot state from full plant to controller plant
+  builder.Connect(sim_plant.get_state_output_port(iiwa_instance_sim),
+                  controller->get_input_port_estimated_state());
+  builder.Connect(controller->get_output_port_control(),
+                  sim_plant.get_actuation_input_port(iiwa_instance_sim));
+
+  std::unique_ptr<systems::Diagram<double>> diagram = sim_builder.Build();
+
+  builder.BuildInto(&(*diagram));
 
   auto sys = builder.Build();
 

@@ -24,7 +24,10 @@ template <class T>
 void HydroelasticTractionCalculator<T>::
     ComputeSpatialForcesAtCentroidFromHydroelasticModel(
         const Data& data, double dissipation, double mu_coulomb,
-        SpatialForce<T>* F_Ac_W) const {
+        SpatialForce<T>* F_Ac_W,
+        std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_A,
+        std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_B)
+        const {
   DRAKE_DEMAND(F_Ac_W != nullptr);
 
   // Use a second-order Gaussian quadrature rule. For linear pressure fields,
@@ -49,10 +52,10 @@ void HydroelasticTractionCalculator<T>::
     if (data.surface.is_triangle()) {
       std::function<SpatialForce<T>(const Vector3<T>&)> traction_Ac_W =
           [this, &data, i, dissipation,
-           mu_coulomb](const Vector3<T>& Q_barycentric) {
+           mu_coulomb, &sfn_A, &sfn_B](const Vector3<T>& Q_barycentric) {
             const HydroelasticQuadraturePointData<T> traction_output =
                 CalcTractionAtPoint(data, i, Q_barycentric, dissipation,
-                                    mu_coulomb);
+                                    mu_coulomb, sfn_A, sfn_B);
             return ComputeSpatialTractionAtAcFromTractionAtAq(
                 data, traction_output.p_WQ, traction_output.traction_Aq_W);
           };
@@ -66,7 +69,8 @@ void HydroelasticTractionCalculator<T>::
       (*F_Ac_W) += Fi_Ac_W;
     } else {
       const HydroelasticQuadraturePointData<T> traction_output =
-          CalcTractionAtCentroid(data, i, dissipation, mu_coulomb);
+          CalcTractionAtCentroid(data, i, dissipation, mu_coulomb, sfn_A,
+                                 sfn_B);
       const SpatialForce<T> traction_Ac_W =
           ComputeSpatialTractionAtAcFromTractionAtAq(
               data, traction_output.p_WQ, traction_output.traction_Aq_W);
@@ -132,7 +136,10 @@ HydroelasticTractionCalculator<T>::CalcTractionAtPoint(
     // NOLINTNEXTLINE(runtime/references): "template Bar..." confuses cpplint.
     const typename TriangleSurfaceMesh<T>::template Barycentric<T>&
         Q_barycentric,
-    double dissipation, double mu_coulomb) const {
+    double dissipation, double mu_coulomb,
+    std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_A,
+    std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_B)
+    const {
   // Compute the point of contact in the world frame.
   const Vector3<T> p_WQ =
       data.surface.tri_mesh_W().CalcCartesianFromBarycentric(face_index,
@@ -146,14 +153,16 @@ HydroelasticTractionCalculator<T>::CalcTractionAtPoint(
   const Vector3<T> nhat_W = data.surface.face_normal(face_index);
 
   return CalcTractionAtQHelper(data, face_index, e, nhat_W, dissipation,
-                               mu_coulomb, p_WQ);
+                               mu_coulomb, p_WQ, sfn_A, sfn_B);
 }
 
 template <typename T>
 HydroelasticQuadraturePointData<T>
 HydroelasticTractionCalculator<T>::CalcTractionAtCentroid(
-    const Data& data, int face_index, double dissipation,
-    double mu_coulomb) const {
+    const Data& data, int face_index, double dissipation, double mu_coulomb,
+    std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_A,
+    std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_B)
+    const {
   const Vector3<T>& p_WC = data.surface.centroid(face_index);
   T e;
   if (data.surface.is_triangle()) {
@@ -170,7 +179,7 @@ HydroelasticTractionCalculator<T>::CalcTractionAtCentroid(
   const Vector3<T>& nhat_W = data.surface.face_normal(face_index);
 
   return CalcTractionAtQHelper(data, face_index, e, nhat_W, dissipation,
-                               mu_coulomb, p_WC);
+                               mu_coulomb, p_WC, sfn_A, sfn_B);
 }
 
 /*
@@ -195,12 +204,25 @@ template <typename T>
 HydroelasticQuadraturePointData<T>
 HydroelasticTractionCalculator<T>::CalcTractionAtQHelper(
     const Data& data, int face_index, const T& e, const Vector3<T>& nhat_W,
-    double dissipation, double mu_coulomb, const Vector3<T>& p_WQ) const {
+    double dissipation, double mu_coulomb, const Vector3<T>& p_WQ,
+    std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_A,
+    std::optional<std::reference_wrapper<const Eigen::Vector3<T>>> sfn_B)
+    const {
   HydroelasticQuadraturePointData<T> traction_data;
 
   // Set entries that do not require computation first.
   traction_data.face_index = face_index;
   traction_data.p_WQ = p_WQ;
+
+  // Compute surface velocity for each body at p_WQ
+  Eigen::Vector3<T> v_WAq_ss = Eigen::Vector3<T>::Zero();
+  Eigen::Vector3<T> v_WBq_ss = Eigen::Vector3<T>::Zero();
+  if (sfn_A.has_value()) {
+    v_WAq_ss = sfn_A.value().get().cross(-nhat_W);
+  }
+  if (sfn_B.has_value()) {
+    v_WBq_ss = sfn_B.value().get().cross(nhat_W);
+  }
 
   // Get the relative spatial velocity at the point Q between the
   // two bodies A and B (to which M and N are affixed, respectively) by
@@ -220,7 +242,7 @@ HydroelasticTractionCalculator<T>::CalcTractionAtQHelper(
   // expressed in the world frame, and then the translational component of this
   // velocity.
   const SpatialVelocity<T> V_BqAq_W = V_WAq - V_WBq;
-  const Vector3<T>& v_BqAq_W = V_BqAq_W.translational();
+  const Vector3<T>& v_BqAq_W = V_BqAq_W.translational() + (v_WAq_ss - v_WBq_ss);
 
   // Get the velocity along the normal to the contact surface. Note that a
   // positive value indicates that bodies are separating at Q while a negative

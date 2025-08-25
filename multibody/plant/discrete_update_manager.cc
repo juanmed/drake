@@ -709,12 +709,12 @@ void DiscreteUpdateManager<T>::AppendDiscreteContactPairsForPointContact(
     // transform to world frame W.
     const Vector3<T> v_ACa_W_ss =
         X_WA.rotation() *
-        plant().GetSurfaceVelocity(pair.id_A, inspector, X_WA, pair.p_WCa);
+        plant().GetSurfaceVelocity(context, pair.id_A, inspector, X_WA, pair.p_WCa);
     // Get surface velocity at Cb relative to B in coordinates of B and
     // transform to world frame W.
     const Vector3<T> v_BCb_W_ss =
         X_WB.rotation() *
-        plant().GetSurfaceVelocity(pair.id_B, inspector, X_WB, pair.p_WCb);
+        plant().GetSurfaceVelocity(context, pair.id_B, inspector, X_WB, pair.p_WCb);
     // Relative separation velocity due to surface velocity in contact frame C.
     const Vector3<T> v_AcBc_C_ss = R_WC.transpose() * (v_BCb_W_ss - v_ACa_W_ss);
 
@@ -1024,6 +1024,31 @@ void DiscreteUpdateManager<T>::AppendDiscreteContactPairsForHydroelasticContact(
         const Vector3<T>& p_WB = X_WB.translation();
         const Vector3<T> p_BC_W = p_WC - p_WB;
 
+        // Read surface speed and normal defined for each geometry in collision.
+        // These are expressed in world frame coordinates. The surface speed is
+        // a scalar encoded in the magnitude of the returned vector, and the
+        // normal vector is recovered by normalizing its.
+        const std::optional<Vector3<T>> v_ACo_W_ss =
+            plant().GetSurfaceSpeedAndNormal(context, s.id_M(), inspector, X_WA);
+        const std::optional<Vector3<T>> v_BCo_W_ss =
+            plant().GetSurfaceSpeedAndNormal(context, s.id_N(), inspector, X_WB);
+
+        // Compute surface speed at quadrature point by computing cross
+        // product with its normal vector. The normal vector is such that
+        // points out of the corresponding geometry: out of M and into N for
+        // geometry M, and out of N and into M for geometry N.
+        Vector3<T> v_WAc_ss = Vector3<T>::Zero();
+        Vector3<T> v_WBc_ss = Vector3<T>::Zero();
+        if (v_ACo_W_ss.has_value()) {
+          v_WAc_ss = v_ACo_W_ss.value().cross(nhat_AB_W);
+        }
+        if (v_BCo_W_ss.has_value()) {
+          v_WBc_ss = v_BCo_W_ss.value().cross(nhat_BA_W);
+        }
+        // Compute the relative surface velocity and transform to the contact
+        // frame
+        const Vector3<T> v_AcBc_C_ss = R_WC.transpose() * (v_WBc_ss - v_WAc_ss);
+
         DiscreteContactPair<T> contact_pair{
             .jacobian = std::move(jacobian_blocks),
             .id_A = s.id_M(),
@@ -1037,7 +1062,7 @@ void DiscreteUpdateManager<T>::AppendDiscreteContactPairsForHydroelasticContact(
             .nhat_BA_W = nhat_BA_W,
             .phi0 = phi0,
             .vn0 = vn0,
-            .v_b ={}, // no bias velocity yet
+            .vt_b = v_AcBc_C_ss,
             .fn0 = fn0,
             .stiffness = k,
             .damping = d,

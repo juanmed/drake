@@ -47,7 +47,7 @@
       <visual name="conveyor_belt_visual">
         <geometry>
           <box>
-            <size>10.0 1.0 0.1</size>
+            <size>10.0 10.0 0.1</size>
           </box>
         </geometry>
         <material>
@@ -58,12 +58,16 @@
       <collision name="conveyor_belt_collision">
         <geometry>
           <box>
-            <size>10.0 1.0 0.1</size>
+            <size>10.0 10.0 0.1</size>
           </box>
         </geometry>
         <drake:proximity_properties>
+          <drake:compliant_hydroelastic/>
+          <drake:hydroelastic_modulus> 1e8 </drake:hydroelastic_modulus>
+          <drake:mesh_resolution_hint> 0.01 </drake:mesh_resolution_hint>
           <drake:mu_dynamic>0.8</drake:mu_dynamic>
           <drake:mu_static>1.0</drake:mu_static>
+          <drake:hunt_crossley_dissipation>5</drake:hunt_crossley_dissipation>
           <drake:surface_speed>0.25</drake:surface_speed>
           <drake:surface_velocity_normal>0.0 1.0 0</drake:surface_velocity_normal>
         </drake:proximity_properties>
@@ -76,7 +80,7 @@
 
     <!-- Blue cube on top of the conveyor belt -->
     <link name="box">
-      <pose> -2 -2 1.27 0 0.0 0.0</pose> <!-- Position sightly above the belt -->
+      <pose> 2 2 0.6 0.1 0.0 0.0</pose> <!-- Positionet sightly above the belt -->
       <visual name="box_visual">
         <geometry>
           <box>
@@ -95,8 +99,12 @@
           </box>
         </geometry>
         <drake:proximity_properties>
+          <drake:compliant_hydroelastic/>
+          <drake:hydroelastic_modulus> 1e6 </drake:hydroelastic_modulus>
+          <drake:mesh_resolution_hint> 0.01 </drake:mesh_resolution_hint>
           <drake:mu_dynamic>0.7</drake:mu_dynamic>
           <drake:mu_static>0.7</drake:mu_static>
+          <drake:hunt_crossley_dissipation>5</drake:hunt_crossley_dissipation>
         </drake:proximity_properties>
       </collision>
     </link>
