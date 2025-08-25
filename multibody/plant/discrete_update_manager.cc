@@ -1062,7 +1062,7 @@ void DiscreteUpdateManager<T>::AppendDiscreteContactPairsForHydroelasticContact(
             .nhat_BA_W = nhat_BA_W,
             .phi0 = phi0,
             .vn0 = vn0,
-            .vt_b = v_AcBc_C_ss,
+            .v_b = v_AcBc_C_ss,
             .fn0 = fn0,
             .stiffness = k,
             .damping = d,
