@@ -26,18 +26,6 @@ DEFINE_string(contact_model, "hydroelastic",
 DEFINE_string(contact_surface_representation, "polygon",
               "Contact-surface representation for hydroelastics. "
               "Options are: 'triangle' or 'polygon'. Default is 'polygon'.");
-DEFINE_double(hydroelastic_modulus, 3.0e4,
-              "Hydroelastic modulus of the ball, [Pa].");
-DEFINE_double(resolution_hint_factor, 0.3,
-              "This scaling factor, [unitless], multiplied by the radius of "
-              "the ball gives the target edge length of the mesh of the ball "
-              "on the surface of its hydroelastic representation. The smaller "
-              "number gives a finer mesh with more tetrahedral elements.");
-DEFINE_double(dissipation, 3.0,
-              "Hunt & Crossley dissipation, [s/m], for the ball");
-DEFINE_double(friction_coefficient, 0.3,
-              "coefficient for both static and dynamic friction, [unitless], "
-              "of the ball.");
 DEFINE_string(
     graphviz, "/home/juaneng/repos/drake/conveyor_belt.dot",
     "Dump the Simulator's Diagram to this file in Graphviz format as a "
@@ -98,11 +86,14 @@ int do_main_continous_plant() {
   double phase = 0.0;
   drake::systems::Sine<double>* sine_generator =
       builder.AddSystem<systems::Sine<double>>(amplitude, frequency, phase, 1);
-  auto sine_vector_gen = builder.AddSystem<SineVectorGenerator>();
+  
   builder.Connect(sine_generator->get_output_port(0),
                   plant.get_surface_speed_input_port().value().get());
-  builder.Connect(sine_vector_gen->get_output_port(),
-                  plant.get_surface_velocity_normal_input_port().value().get());
+  
+  // Uncomment the lines below to dynamically change the surface velocity normal                
+  // auto sine_vector_gen = builder.AddSystem<SineVectorGenerator>();
+  // builder.Connect(sine_vector_gen->get_output_port(),
+  //                 plant.get_surface_velocity_normal_input_port().value().get());
 
   // Set up visualization
   auto meshcat = std::make_shared<geometry::Meshcat>();
