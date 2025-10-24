@@ -1773,9 +1773,9 @@ MultibodyPlant<T>::GetCurrentSurfaceSpeedAndNormal(
   } else {
     // First check if the input port for surface speed is connected. If yes,
     // read and use that values. Otherwise use the default value.
-    if (surface_speed_input_port_index_.has_value()) {
-      const InputPort<T>& ss_input_port =
-          this->get_input_port(surface_speed_input_port_index_.value());
+    if (geomid_to_surface_speed_input_port_index_.contains(id)) {
+      const InputPort<T>& ss_input_port = this->get_input_port(
+          geomid_to_surface_speed_input_port_index_.at(id));
       if (ss_input_port.HasValue(context)) {
         surface_speed.emplace(ss_input_port.Eval(context)(0));
       } else {
@@ -1786,9 +1786,9 @@ MultibodyPlant<T>::GetCurrentSurfaceSpeedAndNormal(
     }
 
     // Same logic applies to read surface velocity normal.
-    if (surface_velocity_normal_input_port_index_.has_value()) {
+    if (geomid_to_surface_normal_input_port_index_.contains(id)) {
       const InputPort<T>& svn_input_port = this->get_input_port(
-          surface_velocity_normal_input_port_index_.value());
+          geomid_to_surface_normal_input_port_index_.at(id));
       if (svn_input_port.HasValue(context)) {
         const Vector3<T>& svn_value = svn_input_port.Eval(context);
         if (svn_value.hasNaN()) {
@@ -4441,22 +4441,18 @@ template <typename T>
 void MultibodyPlant<T>::DeclareSurfaceVelocityInputPort(
     const geometry::GeometryId geomid,
     const Vector3<T>& default_velocity_normal, const T& default_speed) {
+  // If inputs and values exist for this geomid, skip
+  if (geomid_to_surface_speed_normal_.contains(geomid)) {
+    return;
+  }
   // Check input values
   if (default_velocity_normal.array().isNaN().any() ||
       !default_velocity_normal.allFinite()) {
     return;
   }
-  // if (std::isnan(default_speed)) {
-  //   return;
-  // }
-
   if (!geomid.is_valid()) {
     return;
   }
-
-  // Store this geometry's default speed and velocity
-  geomid_to_surface_speed_normal_[geomid] = {default_speed,
-                                             default_velocity_normal};
 
   // Recover name of the geometry affected by the input ports.
   const SceneGraphInspector<T>& scene_graph_inspector =
@@ -4467,14 +4463,19 @@ void MultibodyPlant<T>::DeclareSurfaceVelocityInputPort(
   std::string speed_input_port_name = geom_name + "_surface_speed_input";
   systems::InputPortIndex ss_index =
       this->DeclareVectorInputPort(speed_input_port_name, 1).get_index();
-  surface_speed_input_port_index_.emplace(ss_index);
   std::string normal_input_port_name =
       geom_name + "_surface_velocity_normal_input";
   systems::InputPortIndex svn_index =
       this->DeclareVectorInputPort(normal_input_port_name,
                                    systems::BasicVector<T>(3))
           .get_index();
-  surface_velocity_normal_input_port_index_.emplace(svn_index);
+
+  // Store this geometry's default speed and velocity
+  geomid_to_surface_speed_normal_[geomid] = {default_speed,
+                                             default_velocity_normal};
+  // Map each input port index to the corresponding geometry ID
+  geomid_to_surface_speed_input_port_index_[geomid] = ss_index;
+  geomid_to_surface_normal_input_port_index_[geomid] = svn_index;
   return;
 }
 

@@ -88,7 +88,7 @@ int do_main_continous_plant() {
       builder.AddSystem<systems::Sine<double>>(amplitude, frequency, phase, 1);
   
   builder.Connect(sine_generator->get_output_port(0),
-                  plant.get_surface_speed_input_port().value().get());
+                  plant.get_surface_speed_input_port(geom_id).value().get());
   
   // Uncomment the lines below to dynamically change the surface velocity normal                
   // auto sine_vector_gen = builder.AddSystem<SineVectorGenerator>();

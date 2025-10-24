@@ -5715,18 +5715,20 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
       const Vector3<T>& default_velocity_normal, const T& default_speed);
 
   std::optional<std::reference_wrapper<const systems::InputPort<T>>>
-  get_surface_speed_input_port() const {
-    if (surface_speed_input_port_index_.has_value()) {
-      return this->get_input_port(surface_speed_input_port_index_.value());
+  get_surface_speed_input_port(const geometry::GeometryId geomid) const {
+    if (geomid_to_surface_speed_input_port_index_.contains(geomid)) {
+      return this->get_input_port(
+          geomid_to_surface_speed_input_port_index_.at(geomid));
     }
     return std::nullopt;
   };
 
   std::optional<std::reference_wrapper<const systems::InputPort<T>>>
-  get_surface_velocity_normal_input_port() const {
-    if (surface_velocity_normal_input_port_index_.has_value()) {
+  get_surface_velocity_normal_input_port(
+      const geometry::GeometryId geomid) const {
+    if (geomid_to_surface_normal_input_port_index_.contains(geomid)) {
       return this->get_input_port(
-          surface_velocity_normal_input_port_index_.value());
+          geomid_to_surface_normal_input_port_index_.at(geomid));
     }
     return std::nullopt;
   };
@@ -6556,9 +6558,11 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
   // default_speed parameters.
   std::map<geometry::GeometryId, std::pair<T, Eigen::Vector3<T>>>
       geomid_to_surface_speed_normal_;
-  std::optional<systems::InputPortIndex> surface_speed_input_port_index_;
-  std::optional<systems::InputPortIndex>
-      surface_velocity_normal_input_port_index_;
+  // Mapping between GeometryIds and their corresponding input port indices.
+  std::map<geometry::GeometryId, systems::InputPortIndex>
+      geomid_to_surface_speed_input_port_index_;
+  std::map<geometry::GeometryId, systems::InputPortIndex>
+      geomid_to_surface_normal_input_port_index_;
 
   InputPortIndices input_port_indices_;
   OutputPortIndices output_port_indices_;
