@@ -1,0 +1,36 @@
+load(
+    "//tools/skylark:drake_cc.bzl",
+    "drake_cc_binary",
+)
+
+cc_library(
+  name = "lcs",
+  srcs = ["lcs.cc"],
+  hdrs = ["lcs.h"],
+  deps = [
+    "//:drake_shared_library",
+     "@eigen",
+  ]
+)
+
+cc_library(
+  name = "options",
+  hdrs = ["lcs_factory_options.h"]
+)
+
+cc_library(
+    name = "lcs_factory",
+    srcs = ["lcs_factory.cc",
+            "geom_geom_collider.cc",
+            "multibody_utils.cc"],
+    hdrs = [
+        "lcs_factory.h",
+        "geom_geom_collider.h",
+        "multibody_utils.h",
+    ],
+    deps = [
+        ":options",
+        ":lcs",
+        "@drake//:drake_shared_library",
+    ],
+)
