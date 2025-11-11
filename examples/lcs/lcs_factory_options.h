@@ -27,7 +27,7 @@ struct LCSFactoryOptions {
     a->Visit(DRAKE_NVP(N));
     a->Visit(DRAKE_NVP(dt));
 
-    DRAKE_DEMAND(mu.size() == (size_t)num_contacts);
+    DRAKE_DEMAND(mu.size() == static_cast<size_t>(num_contacts));
   }
 };
 

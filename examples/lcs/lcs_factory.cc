@@ -116,7 +116,7 @@ void LCSFactory::UpdateStateAndInput(
   } else {
     SetContext<double>(plant_, state, input, &context_);
   }
-  drake::VectorX<double> q_v_u(n_x_ + n_u_);
+  drake::VectorX<double> q_v_u(n_x_ + n_u_ + n_b_);
   q_v_u << state, input;
   drake::AutoDiffVecXd q_v_u_ad = drake::math::InitializeAutoDiff(q_v_u);
   SetPositionsAndVelocitiesIfNew<AutoDiffXd>(plant_ad_, q_v_u_ad.head(n_x_),
@@ -146,10 +146,16 @@ LCS LCSFactory::GenerateLCS() {
   AutoDiffVecXd C(n_v_);
   plant_ad_.CalcBiasTerm(context_ad_, &C);
 
+  std::cout << "plant ad positions: " << plant_ad_.num_positions() << std::endl;
+  std::cout << "plant ad velocities: " << plant_ad_.num_velocities() << std::endl;
+  std::cout << "plant ad actuators: " << plant_ad_.num_actuators() << std::endl;
+
   // Calculate generalized forces τ(u) = Bu
   auto B_dyn_ad = plant_ad_.MakeActuationMatrix();
-  AutoDiffVecXd tau_u =
-      B_dyn_ad * plant_ad_.get_actuation_input_port().Eval(context_ad_);
+  std::cout << "B_dyn_ad size: " << B_dyn_ad.rows() << " x " << B_dyn_ad.cols() << std::endl;
+  auto u_ad = plant_ad_.get_actuation_input_port().Eval(context_ad_);
+  std::cout << "u_ad: " << u_ad.rows() << " x " << u_ad.cols() << std::endl;
+  AutoDiffVecXd tau_u = B_dyn_ad * u_ad;
 
   // Calculate generalized forces due to gravity τ₍g₎
   AutoDiffVecXd tau_g = plant_ad_.CalcGravityGeneralizedForces(context_ad_);

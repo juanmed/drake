@@ -2,10 +2,10 @@
 
 #include <utility>
 
-#include "core/lcs.h"
-#include "multibody/lcs_factory.h"
-#include "multibody/multibody_utils.h"
-#include "systems/framework/timestamped_vector.h"
+#include "lcs.h"
+#include "lcs_factory.h"
+#include "multibody_utils.h"
+#include "timestamped_vector.h"
 
 using c3::LCS;
 using c3::multibody::LCSFactory;

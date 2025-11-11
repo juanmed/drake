@@ -11,9 +11,13 @@ drake_cc_binary(
     srcs = ["conveyor_belt.cc"],
     data = [
         "conveyor_belt.sdf",
+        "conveyor_belt_ex.sdf",
         "//examples/scene_graph:models",
     ],
     deps = [
+        "//examples/lcs:options",
+        "//examples/lcs:lcs_factory_system",
+        "//examples/lcs:framework",
         "//geometry:meshcat_visualizer",
         "//geometry:scene_graph",
         "//multibody/meshcat:contact_visualizer",

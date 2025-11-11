@@ -131,8 +131,8 @@ void SetSurfaceVelocitiesIfNew(
   for (const auto& g : geoms) {
     if (auto input_port = plant.get_surface_speed_input_port(g);
         input_port.has_value()) {
-      if (!input_port.value().get().HasValue(*context) /*||
-          !AreVectorsEqual(u, input_port.value().get().Eval(*context))*/) {
+      if (!input_port.value().get().HasValue(*context) ||
+          !AreVectorsEqual(u, input_port.value().get().Eval(*context))) {
         drake::VectorX<T> one(1);
         one.x() = u(i);
         input_port.value().get().FixValue(context, one);
