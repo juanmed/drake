@@ -5,6 +5,7 @@
 #include "drake/geometry/geometry_ids.h"
 #include "drake/geometry/proximity_properties.h"
 #include "drake/math/rigid_transform.h"
+#include "drake/multibody/parsing/parser.h"
 #include "drake/multibody/plant/multibody_plant.h"
 #include "drake/systems/framework/diagram_builder.h"
 
@@ -103,6 +104,78 @@ GTEST_TEST(SurfaceVelocityTest, BoxSurfaceVelocity) {
 
   (void)ground_id;
   (void)belt_geom_id;
+}
+
+GTEST_TEST(SurfaceVelocityTest, BoxSurfaceVelocityFromSDF) {
+  const double tol = 1e-5;
+
+  systems::DiagramBuilder<double> builder;
+  auto [plant, scene_graph] =
+      multibody::AddMultibodyPlantSceneGraph(&builder, 0.0);
+  std::string conveyor_belt_url =
+      "package://drake/examples/conveyor_belt/conveyor_belt_simple.sdf";
+  multibody::Parser(&builder).AddModelsFromUrl(conveyor_belt_url);
+  plant.Finalize();
+
+  std::unique_ptr<drake::systems::Diagram<double>> diagram = builder.Build();
+  std::unique_ptr<drake::systems::Context<double>> diagram_context =
+      diagram->CreateDefaultContext();
+  diagram->SetDefaultContext(diagram_context.get());
+  auto& context =
+      diagram->GetMutableSubsystemContext(plant, diagram_context.get());
+
+  // Set conveyor belt's pose
+  const multibody::RigidBody<double>& belt =
+      plant.GetBodyByName("conveyor_belt");
+  math::RigidTransformd body_pose = plant.EvalBodyPoseInWorld(context, belt);
+  const geometry::GeometryId belt_geom_id =
+      plant.GetCollisionGeometriesForBody(belt).at(0);
+
+  // Assume there are some contacts on each face of the conveyor belt.
+  // For ease of reading, these are expressed in coordinates of its body
+  // frame and later will be transformed to world coordinates
+  const double w = 10;
+  const double d = 1.0;
+  const double h = 0.1;
+  std::vector<Eigen::Vector3d> contacts_G = {
+      {w / 2, 0., 0.},    // Contact at +x face
+      {-w / 2, 0., 0.},   // Contact at -x face
+      {0., d / 2, 0.},    // Contact at +y face
+      {0., -d / 2, 0.},   // Contact at -y face
+      {0., 0., h / 2},    // Contact at +z face
+      {0., 0., -h / 2}};  // Contact at -z face
+
+  const geometry::SceneGraphInspector<double>& inspector =
+      plant.EvalSceneGraphInspector(context);
+  std::optional<Eigen::Vector3d> maybe_surface_speed =
+      plant.GetSurfaceSpeedAndNormal(context, belt_geom_id, inspector,
+                                     body_pose);
+
+  // Verify surface speed and normal exists
+  EXPECT_TRUE(maybe_surface_speed.has_value());
+  const double surface_speed = maybe_surface_speed.value().norm();
+  const Eigen::Vector3d velocity_n = maybe_surface_speed.value().normalized();
+
+  for (const Eigen::Vector3d& c_G : contacts_G) {
+    const Eigen::Vector3d c_W = body_pose * c_G;
+    Eigen::Vector3d surface_v = plant.GetSurfaceVelocity(
+        context, belt_geom_id, scene_graph.model_inspector(), body_pose, c_W);
+
+    // Verify the direction of surface velocity is equal to cross product
+    // between the surface normal at each contact point and the velocity
+    // normal vector
+    Eigen::Vector3d v_ref_W =
+        surface_speed *
+        (body_pose.rotation() * velocity_n.cross(c_G.normalized()));
+    Eigen::Vector3d v_ss_W = body_pose.rotation() * surface_v;
+    EXPECT_LT((v_ss_W - v_ref_W).norm(), tol);
+
+    // When the velocity normal and the surface normal vectors are parallel,
+    // their cross product is 0 meaning the surface velocity should be also
+    // very close to 0. This occurs in this case for a contact at the +x and -x
+    // faces because they are parallel to the velocity normal.
+    EXPECT_NEAR(v_ss_W.norm(), v_ref_W.norm() > 1e-3 ? surface_speed : 0., tol);
+  }
 }
 
 }  // namespace

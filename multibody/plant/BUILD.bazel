@@ -1286,6 +1286,10 @@ drake_cc_googletest(
     srcs = ["test/surface_velocity_test.cc"],
     deps = [
         ":multibody_plant_core",
+        "//multibody/parsing",
+    ],
+    data = [
+      "//examples/conveyor_belt:model_files",
     ]
 )
 

@@ -61,3 +61,8 @@ drake_py_binary(
         "//bindings/pydrake",
     ],
 )
+
+filegroup(
+    name = "model_files",
+    srcs = glob(["*.sdf"])
+)
