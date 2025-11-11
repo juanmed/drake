@@ -1808,6 +1808,42 @@ MultibodyPlant<T>::GetCurrentSurfaceSpeedAndNormal(
 }
 
 template <typename T>
+const Eigen::Vector3<T> MultibodyPlant<T>::GetSurfaceVelocityDirection(
+    const systems::Context<T>& context, geometry::GeometryId id,
+    const geometry::SceneGraphInspector<T>& inspector,
+    const math::RigidTransform<T>& X_W, const Vector3<T>& p_WC) const {
+  Vector3<T> surface_velocity = Vector3<T>::Zero();
+  Eigen::Vector3<T> velocity_normal;
+
+  std::optional<std::pair<T, Vector3<T>>> surface_params =
+      GetCurrentSurfaceSpeedAndNormal(context, id, inspector);
+
+  if (surface_params.has_value()) {
+    velocity_normal = surface_params.value().second;
+  } else {
+    return surface_velocity;
+  }
+
+  // Transform contact point from world frame to the local geometry frame.
+  const Vector3<T> p_GC = X_W.inverse() * p_WC;
+
+  // Use the shape of the collision geometry and the contact point to
+  // get the normal vector to the surface at that point
+  const geometry::Shape& shape = inspector.GetShape(id);
+  std::optional<Vector3<T>> normal_at_p_GC =
+      geometry::GetNormalAtPoint<T>(shape, p_GC);
+  if (!normal_at_p_GC.has_value()) {
+    return surface_velocity;
+  }
+
+  // The velocity vector is the cross product between the velocity_normal
+  // and the surface normal, in that order. Its magnitude is the surface speed.
+  surface_velocity =
+      (velocity_normal.cross(normal_at_p_GC.value()).normalized());
+  return surface_velocity;
+}
+
+template <typename T>
 Vector3<T> MultibodyPlant<T>::GetSurfaceVelocity(
     const systems::Context<T>& context, geometry::GeometryId id,
     const geometry::SceneGraphInspector<T>& inspector,

@@ -106,6 +106,85 @@ GTEST_TEST(SurfaceVelocityTest, BoxSurfaceVelocity) {
   (void)belt_geom_id;
 }
 
+GTEST_TEST(SurfaceVelocityTest, SurfaceVelocityDirection) {
+  constexpr double tol = 1e-5;
+
+  systems::DiagramBuilder<double> builder;
+  auto [plant, scene_graph] =
+      multibody::AddMultibodyPlantSceneGraph(&builder, 0.0);
+
+  CoulombFriction<double> friction(0.5, 0.3);
+
+  // Create ground.
+  plant.RegisterCollisionGeometry(
+      plant.world_body(),
+      geometry::HalfSpace::MakePose(Eigen::Vector3d::UnitY(),
+                                    Eigen::Vector3d::Zero()),
+      geometry::HalfSpace(), "floor", friction);
+
+  // Create a conveyor-belt-like box with surface velocity properties.
+  const RigidBody<double>& belt =
+      plant.AddRigidBody("belt", SpatialInertia<double>::MakeUnitary());
+  const double belt_stiffness = 980;
+  const double belt_dissipation = 3.2;
+  const double surface_speed = 0.5;
+  const Eigen::Vector3d velocity_n(1.0, 0.0, 0.0);
+
+  geometry::ProximityProperties belt_props;
+  belt_props.AddProperty(geometry::internal::kMaterialGroup,
+                         geometry::internal::kFriction, friction);
+  belt_props.AddProperty(geometry::internal::kMaterialGroup,
+                         geometry::internal::kPointStiffness, belt_stiffness);
+  belt_props.AddProperty(geometry::internal::kMaterialGroup,
+                         geometry::internal::kHcDissipation, belt_dissipation);
+  belt_props.AddProperty(geometry::internal::kSurfaceVelocityGroup,
+                         geometry::internal::kSurfaceSpeed, surface_speed);
+  belt_props.AddProperty(geometry::internal::kSurfaceVelocityGroup,
+                         geometry::internal::kSurfaceVelocityNormal,
+                         velocity_n);
+  const double w = 3;
+  const double d = 0.5;
+  const double h = 0.1;
+  geometry::GeometryId belt_geom_id = plant.RegisterCollisionGeometry(
+      belt, math::RigidTransformd(Eigen::Vector3d(0., 0., 0.)),
+      geometry::Box(Eigen::Vector3d(w, d, h)), "belt_collision",
+      std::move(belt_props));
+
+  plant.Finalize();
+  std::unique_ptr<drake::systems::Context<double>> context =
+      plant.CreateDefaultContext();
+
+  // Orient the belt to ensure we exercise arbitrary pose handling.
+  const double yaw = 0.78;
+  const math::RigidTransformd body_pose(
+      math::RollPitchYaw<double>(0., 0., yaw), Eigen::Vector3d(0., 0., 1.));
+  plant.SetFreeBodyPoseInWorldFrame(context.get(), belt, body_pose);
+  const math::RigidTransformd X_WB = plant.GetFreeBodyPose(*context, belt);
+
+  // Contact points expressed in the belt frame (same as BoxSurfaceVelocity).
+  std::vector<Eigen::Vector3d> contacts_G = {
+      {w / 2, 0., 0.},    // +x face
+      {-w / 2, 0., 0.},   // -x face
+      {0., d / 2, 0.},    // +y face
+      {0., -d / 2, 0.},   // -y face
+      {0., 0., h / 2},    // +z face
+      {0., 0., -h / 2}};  // -z face
+
+  const geometry::SceneGraphInspector<double>& inspector =
+      scene_graph.model_inspector();
+
+  for (const Eigen::Vector3d& c_G : contacts_G) {
+    const Eigen::Vector3d p_WC = X_WB * c_G;
+    const Eigen::Vector3d direction_G = plant.GetSurfaceVelocityDirection(
+        *context, belt_geom_id, inspector, X_WB, p_WC);
+
+    Eigen::Vector3d normal_G = c_G.normalized();
+    Eigen::Vector3d expected_dir_G = velocity_n.cross(normal_G);
+
+    EXPECT_LT((direction_G - expected_dir_G).norm(), tol);
+  }
+}
+
 GTEST_TEST(SurfaceVelocityTest, BoxSurfaceVelocityFromSDF) {
   const double tol = 1e-5;
 

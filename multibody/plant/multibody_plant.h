@@ -5697,10 +5697,22 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
       const geometry::SceneGraphInspector<T>& inspector,
       const math::RigidTransform<T>& X_W, const Vector3<T>& p_WC) const;
 
+  // Get the surface speed and surface velocity normal vector if
+  // they exist. The surface speed is encoded in the magnitude of the
+  // returned vector while the surface velocity normal is encoded
+  // as the unit direction vector of the returned vector.
   const std::optional<Eigen::Vector3<T>> GetSurfaceSpeedAndNormal(
       const systems::Context<T>& context, const geometry::GeometryId id,
       const geometry::SceneGraphInspector<T>& inspector,
       const math::RigidTransform<T>& X_W) const;
+
+  // Get the direction vector of the surface velocity v_s. This is the
+  // cross product between the surface velocity normal vector v_n and the
+  // surface's normal vector n at point p_WC: v_s = v_n x n.
+  const Eigen::Vector3<T> GetSurfaceVelocityDirection(
+      const systems::Context<T>& context, geometry::GeometryId id,
+      const geometry::SceneGraphInspector<T>& inspector,
+      const math::RigidTransform<T>& X_W, const Vector3<T>& p_WC) const;
 
   // Creates two input ports that together define the surface speed for
   // the collision geometries belonging to the input body.
@@ -5732,7 +5744,7 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
     }
     return std::nullopt;
   };
-    /// @} <!-- Introspection -->
+  /// @} <!-- Introspection -->
 
 #ifndef DRAKE_DOXYGEN_CXX
   // Internal-only access to LinkJointGraph::FindSubgraphsOfWeldedBodies();
