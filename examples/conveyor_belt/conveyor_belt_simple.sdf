@@ -51,7 +51,7 @@
 
     <!-- Conveyor belt -->
     <link name="conveyor_belt">
-      <pose> 0 0 1 0 0.0 0.78</pose>
+      <pose> 0 0 1 0 0 0.78</pose>
       <visual name="conveyor_belt_visual">
         <geometry>
           <box>
